@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 BASE = "https://loudspeakerdatabase.com"
 
 brands = ["Peerless"]
-pause = 3
+pause = 5
 
 langs = {"fr", "ru", "cn", "de", "es", "it", "pt", "ja", "pl"}
 
@@ -36,7 +36,7 @@ def permission(url):
     except Exception:
         return True
 
-url_test = BASE + "/search/brand=accuton"
+url_test = BASE #+ "/search/brand=accuton"
 print(permission(url_test))
 
 ## Obtain html
@@ -64,25 +64,30 @@ def obtain_html(url, num_try = 3):
     return None
 
 
-
+"""
 def print_start_end(html):
-    start = ',206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206,206]}'
+    start = ',206,206,206,206,199,206,206,206,206,206,206,201,206,206,206,206,206,206,206,206,206,206,206,206,206,201]}'
     end = '<div class="next_page">'
 
     start_block = html.split(start)
     
+    #print(start_block[0])
     end_block = start_block[1].split(end)
 
-    #print(end_block[0])
+    print(end_block[0])
     return(end_block[0])
 
-parameters = print_start_end(obtain_html(url_test))
+print_start_end(url_test)
+"""
 
 def string_to_save(start, end, text):
 
     first_split = text.split(start)
     #print("\n\n",first_split[0])
-    second_split = first_split[1].split(end)
+    try:
+        second_split = first_split[1].split(end)
+    except Exception:
+        print("\n\n",first_split[0])
 
     return second_split[0]
 
@@ -98,11 +103,11 @@ def save_parameters(text):
 
     individual_driver = text.split(split_block)
     individual_driver = individual_driver[1:]
-    print(individual_driver[0])
+    #print(individual_driver[0])
 
     for driver in individual_driver:
 
-        re = string_to_save('re:', ',bl', driver)
+        Re = string_to_save('re:', ',bl', driver)
         bl = string_to_save('bl:', ',mmd', driver)
         mmd = string_to_save('mmd:', ',rms', driver)
         rms = string_to_save('rms:', ',cms', driver)
@@ -110,9 +115,14 @@ def save_parameters(text):
         sd = string_to_save('sd:', ',le', driver)
         le = string_to_save('le:', ',fs', driver)
         fs = string_to_save('fs:', ',qts', driver)
-        qts = string_to_save('qts:', ',xmax', driver)
-        xmax = string_to_save('xmax:', ',pmax', driver)
-        if 'frmin:' and 'frmax:' in driver:
+        if 'xmax:' in driver:
+            qts = string_to_save('qts:', ',xmax', driver)
+            xmax = string_to_save('xmax:', ',pmax', driver)
+        else:
+            qts = string_to_save('qts:', ',pmax', driver)
+            xmax = None  
+
+        if 'frmin:' in driver and 'frmax:' in driver:
             pmax = string_to_save('pmax:', ',frmin', driver)
             frmin = string_to_save('frmin:', ',frmax', driver)
             frmax = string_to_save('frmax:', ',spl1w', driver)
@@ -123,7 +133,7 @@ def save_parameters(text):
         spl1w = string_to_save('spl1w:', ',z:', driver)
         z_raw = driver.split('z:')
         if '}"><a' in z_raw[1]:
-            z = string_to_save('z:', '}"><a', driver)
+            z = string_to_save('z:', '}"><a', driver) #}"><a href=
         elif '}"><div class=' in z_raw[1]:
             z = string_to_save('z:', '}"><div class=', driver)
         else:
@@ -136,7 +146,7 @@ def save_parameters(text):
         data = {
             "Brand": brand,
             "Model": model,
-            "Re": re,
+            "Re": Re,
             "Bl": bl,
             "Mmd": mmd,
             "Rms": rms,
@@ -155,8 +165,31 @@ def save_parameters(text):
 
         driver_data.append(data)
     
-    print(driver_data)
-    df = pd.DataFrame(driver_data)
-    df.to_csv(f"driver_data_accuton.csv", index = False, encoding="utf-8-sig")
+    return driver_data
+    
 
-save_parameters(parameters)
+def scrollable_action():
+    all_drivers = []
+    page = 0
+
+    while True:
+        html = obtain_html(f"{BASE}/next_page_api/offset={page*40}")
+        if not html:
+            break
+
+        batch = save_parameters(html)
+
+        if not batch:
+            break
+        all_drivers.extend(batch)
+
+        print(f"Page {page}: {len(batch)} items")
+        page += 1
+    
+    return all_pages
+
+final_list = scrollable_action()
+print(len(final_list))
+    
+df = pd.DataFrame(final_list).drop_duplicates(subset=["Brand", "Model"])
+df.to_csv(f"driver_data.csv", index = False, encoding="utf-8-sig")
