@@ -36,7 +36,7 @@ def permission(url):
     except Exception:
         return True
 
-url_test = BASE #+ "/search/brand=accuton"
+url_test = BASE + "/search/brand=accuton"
 print(permission(url_test))
 
 ## Obtain html
@@ -64,10 +64,11 @@ def obtain_html(url, num_try = 3):
     return None
 
 
-"""
+
 def print_start_end(html):
-    start = ',206,206,206,206,199,206,206,206,206,206,206,201,206,206,206,206,206,206,206,206,206,206,206,206,206,201]}'
+    start = ',206,206,206,206,206,206,206,206]}</script>'
     end = '<div class="next_page">'
+    #end = 'loading="lazy"'
 
     start_block = html.split(start)
     
@@ -77,8 +78,8 @@ def print_start_end(html):
     print(end_block[0])
     return(end_block[0])
 
-print_start_end(url_test)
-"""
+#print_start_end(obtain_html(url_test))
+
 
 def string_to_save(start, end, text):
 
@@ -91,7 +92,7 @@ def string_to_save(start, end, text):
 
     return second_split[0]
 
-def save_parameters(text):
+def save_parameters(text, page):
 
     driver_data = []
     
@@ -138,6 +139,8 @@ def save_parameters(text):
             z = string_to_save('z:', '}"><div class=', driver)
         else:
             z = None
+        
+        ty = string_to_save('data-highlight="type">', '</span></td>', driver)
 
         brand_model = string_to_save('href="/', '" class="photos_and_graphs"', driver).split("/")
         brand = brand_model[0]
@@ -160,10 +163,13 @@ def save_parameters(text):
             "frmin": frmin,
             "frmax": frmax,
             "spl1w": spl1w,
-            "z": z
+            "z": z,
+            "Type": ty,
+            "Page": page
         }
 
         driver_data.append(data)
+        print(data)
     
     return driver_data
     
@@ -172,24 +178,38 @@ def scrollable_action():
     all_drivers = []
     page = 0
 
+    h=["Brand","Model","Re","Bl","Mmd","Rms","Cms","Sd","Le","Fs","Qts","Xmax","Pmax","frmin","frmax","spl1w","z","Type", "Page"]
+
+    try:
+        df = pd.read_csv("driver_data.csv")
+        page = max(df["Page"]) + 1
+    
+    except Exception:
+        pd.DataFrame(columns=h).to_csv("driver_data.csv", index = False, encoding="utf-8")
+
     while True:
         html = obtain_html(f"{BASE}/next_page_api/offset={page*40}")
         if not html:
             break
 
-        batch = save_parameters(html)
+        batch = save_parameters(html, page)
 
         if not batch:
             break
-        all_drivers.extend(batch)
+        
+        if len(batch) > 40:
+            break
+        
+        df = pd.DataFrame(batch).drop_duplicates(subset=["Brand", "Model"])
+        df.to_csv(f"driver_data.csv", mode = "a", index = False, columns=h, header = False, encoding="utf-8")
+        #all_drivers.extend(batch)
 
         print(f"Page {page}: {len(batch)} items")
         page += 1
     
-    return all_pages
+    return df
 
-final_list = scrollable_action()
-print(len(final_list))
-    
-df = pd.DataFrame(final_list).drop_duplicates(subset=["Brand", "Model"])
-df.to_csv(f"driver_data.csv", index = False, encoding="utf-8-sig")
+scrollable_action()
+
+data = pd.read_csv("driver_data.csv")
+len(data)
