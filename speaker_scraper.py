@@ -142,6 +142,13 @@ def save_parameters(text, page):
         
         ty = string_to_save('data-highlight="type">', '</span></td>', driver)
 
+        if 'Discontinued' in driver:
+            status = "Discontinued"
+        elif 'Vintage' in driver:
+            status = "Vintage"
+        else:
+            status = "Ongoing"
+
         brand_model = string_to_save('href="/', '" class="photos_and_graphs"', driver).split("/")
         brand = brand_model[0]
         model = brand_model[1]
@@ -165,6 +172,7 @@ def save_parameters(text, page):
             "spl1w": spl1w,
             "z": z,
             "Type": ty,
+            "Status": status,
             "Page": page
         }
 
@@ -178,7 +186,7 @@ def scrollable_action():
     all_drivers = []
     page = 0
 
-    h=["Brand","Model","Re","Bl","Mmd","Rms","Cms","Sd","Le","Fs","Qts","Xmax","Pmax","frmin","frmax","spl1w","z","Type", "Page"]
+    h=["Brand","Model","Re","Bl","Mmd","Rms","Cms","Sd","Le","Fs","Qts","Xmax","Pmax","frmin","frmax","spl1w","z","Type", "Status", "Page"]
 
     try:
         df = pd.read_csv("driver_data.csv")
