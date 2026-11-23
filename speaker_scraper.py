@@ -1,4 +1,5 @@
 import re
+import random
 import sys
 import time
 import urllib.robotparser
@@ -49,7 +50,7 @@ def obtain_html(url, num_try = 3):
         try:
             r = session.get(url, timeout = 20)
             if r.status_code == 200:
-                time.sleep(pause)
+                time.sleep(random.randint(10,30))
                 return r.text
         
             if r.status_code == 429:
